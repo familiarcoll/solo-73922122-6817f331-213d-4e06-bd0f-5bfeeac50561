@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{{ email }} · 收件箱{% endblock %}
+{% block body %}
+<div class="card">
+  <h1>收件箱 · <code>{{ email }}</code></h1>
+  <p><a class="btn ghost" style="margin:0 0 10px" href="/mail">← 全部邮箱</a></p>
+  {% if mails %}
+  <table>
+    <tr><th style="width:60px">#</th><th>主题</th><th style="width:190px">接收时间</th><th style="width:110px">操作</th></tr>
+    {% for m in mails %}
+    <tr>
+      <td>{{ m.id }}</td>
+      <td>{{ m.subject }}</td>
+      <td class="small">{{ m.created_at | timestamp_fmt }}</td>
+      <td><a class="btn ghost" style="margin:0;padding:4px 12px" href="/mail/view/{{ m.id }}">查看</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p>该邮箱暂无邮件。</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}演示邮箱{% endblock %}
+{% block body %}
+<div class="card">
+  <h1>演示邮箱</h1>
+  <p class="muted small">本地模拟邮箱，邮件保存在独立的 <code>mail.db</code> 中，与业务数据库隔离，不会向互联网发送任何邮件。</p>
+  {% if boxes %}
+  <table>
+    <tr><th>收件邮箱</th><th style="width:160px">操作</th></tr>
+    {% for b in boxes %}
+    <tr>
+      <td><code>{{ b }}</code></td>
+      <td><a class="btn ghost" style="margin:0;padding:5px 14px" href="/mail/{{ b }}">打开收件箱</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p>暂无邮件。先去 <a href="/reset/request">申请找回链接</a>，邮件会出现在这里。</p>
+  {% endif %}
+</div>
+{% endblock %}

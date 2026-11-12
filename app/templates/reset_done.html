@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}重置完成 · 员工门户{% endblock %}
+{% block body %}
+<div class="card" style="max-width:560px">
+  <h1>密码重置成功</h1>
+  <div class="msg ok">
+    以下操作已在同一个数据库事务中一起生效：
+    <ul style="margin:8px 0 0 18px">
+      <li>找回链接已消费，不能再次使用；</li>
+      <li>密码已替换为新的 Argon2id 哈希；</li>
+      <li>该账号的全部已有会话均已撤销。</li>
+    </ul>
+  </div>
+  <p><a class="btn" href="/login">用新密码登录</a></p>
+</div>
+{% endblock %}

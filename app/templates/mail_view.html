@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}邮件详情{% endblock %}
+{% block body %}
+<div class="card">
+  <h1>{{ mail.subject }}</h1>
+  <table class="small" style="max-width:680px">
+    <tr><th style="width:90px">收件人</th><td><code>{{ mail.to_email }}</code></td></tr>
+    <tr><th>接收时间</th><td>{{ mail.created_at | timestamp_fmt }}</td></tr>
+  </table>
+  <h2 style="margin-top:18px">正文</h2>
+  <pre>{{ mail.body }}</pre>
+  {% if reset_link %}
+  <div class="msg ok">
+    在浏览器中打开下面的链接即可完成找回（链接 10 分钟内有效，仅一次性可用）：
+    <div style="margin-top:8px;word-break:break-all"><a href="{{ reset_link }}">{{ reset_link }}</a></div>
+  </div>
+  {% endif %}
+  <p><a class="btn ghost" href="/mail/{{ mail.to_email }}">返回收件箱</a></p>
+</div>
+{% endblock %}

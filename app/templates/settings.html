@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}哈希延迟设置{% endblock %}
+{% block body %}
+<div class="card" style="max-width:620px">
+  <h1>Argon2 哈希人为延迟</h1>
+  <p class="muted">
+    为便于演示“哈希计算不持数据库写锁”，每次密码哈希 / 校验前后会额外等待指定时长（模拟真实环境中较慢的 argon2 计算）。
+    设置保存在业务数据库中，重启容器后仍然保留；设为 0 可关闭。
+  </p>
+  {% if saved %}<div class="msg ok">已保存，立即对后续登录与重置生效。</div>{% endif %}
+  <form method="post" action="/settings">
+    <label for="delay_ms">延迟（毫秒，0–60000）</label>
+    <input id="delay_ms" name="delay_ms" type="number" min="0" max="60000" step="100"
+           value="{{ delay_ms }}" required>
+    <button type="submit">保存</button>
+  </form>
+  <div class="grid small" style="margin-top:18px">
+    <div class="msg warn" style="margin:0">
+      <strong>交错操作演示：</strong>调大延迟（如 5000ms）后提交重置，
+      在等待期间用另一窗口申请新链接、登录或访问“我的身份”，这些请求都不会被阻塞。
+    </div>
+  </div>
+</div>
+{% endblock %}

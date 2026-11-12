@@ -1,0 +1,45 @@
+services:
+  web1:
+    build: .
+    image: portal-reset-app:latest
+    container_name: portal-web1
+    environment:
+      APP_DB_PATH: /data/app.db
+      MAIL_DB_PATH: /data/mail.db
+      HASH_DELAY_MS: "4000"
+      RESET_TTL_SECONDS: "600"
+    ports:
+      - "8001:8000"
+    volumes:
+      - portal-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz').status==200 else 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  web2:
+    image: portal-reset-app:latest
+    container_name: portal-web2
+    depends_on:
+      web1:
+        condition: service_healthy
+    environment:
+      APP_DB_PATH: /data/app.db
+      MAIL_DB_PATH: /data/mail.db
+      HASH_DELAY_MS: "4000"
+      RESET_TTL_SECONDS: "600"
+    ports:
+      - "8002:8000"
+    volumes:
+      - portal-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz').status==200 else 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  portal-data:

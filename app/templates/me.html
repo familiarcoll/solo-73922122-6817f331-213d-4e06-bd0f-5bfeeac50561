@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}我的身份 · 员工门户{% endblock %}
+{% block body %}
+<div class="card">
+  <h1>我的身份</h1>
+  <table style="max-width:640px">
+    <tr><th style="width:160px">用户 ID</th><td>{{ user.id }}</td></tr>
+    <tr><th>用户名</th><td><code>{{ user.username }}</code></td></tr>
+    <tr><th>邮箱</th><td><code>{{ user.email }}</code></td></tr>
+    <tr><th>密码版本</th><td><code>v{{ user.password_version }}</code>
+      <span class="muted small">（每次成功重置密码后 +1，用于并发登录复查）</span></td></tr>
+    <tr><th>会话状态</th><td><span class="pill ok">有效</span>
+      <span class="muted small">重置密码会在同一事务里撤销该账号全部会话</span></td></tr>
+  </table>
+  <p style="margin-top:18px">
+    <a class="btn ghost" href="/reset/request">申请找回链接</a>
+    <a class="btn ghost" href="/mail">演示邮箱</a>
+  </p>
+</div>
+{% endblock %}

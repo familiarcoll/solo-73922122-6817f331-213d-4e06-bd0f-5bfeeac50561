@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}设置新密码 · 员工门户{% endblock %}
+{% block body %}
+<div class="card" style="max-width:560px">
+  <h1>设置新密码</h1>
+
+  {% if reason %}
+    <div class="msg err">
+      {% if reason == 'consumed' %}该链接已被使用过，不能重复重置。{% endif %}
+      {% if reason == 'superseded' %}该账号已签发更新的找回链接，此旧链接已作废。{% endif %}
+      {% if reason == 'expired' %}链接已超过 10 分钟有效期。{% endif %}
+      {% if reason == 'unknown' %}链接无效或不存在。{% endif %}
+    </div>
+    <p><a class="btn" href="/reset/request">重新申请找回链接</a></p>
+  {% else %}
+    {% if error %}<div class="msg err">{{ error }}</div>{% endif %}
+    <div class="msg warn small">
+      提交后会先在 <strong>不持有数据库写锁</strong> 的情况下计算 Argon2id 哈希（当前页面顶部可调节延迟），
+      随后在单个事务里重新核验链接、消费链接、替换密码并撤销该账号全部会话。
+    </div>
+    <form method="post" action="/reset">
+      <input type="hidden" name="token" value="{{ token }}">
+      <label for="new_password">新密码（至少 8 个字符）</label>
+      <input id="new_password" name="new_password" type="password" required minlength="8">
+      <label for="confirm_password">确认新密码</label>
+      <input id="confirm_password" name="confirm_password" type="password" required minlength="8">
+      <button type="submit">重置密码</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

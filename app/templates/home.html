@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}首页 · 员工门户{% endblock %}
+{% block body %}
+<div class="card">
+  <h1>员工门户 · 密码找回演示</h1>
+  <p class="muted">FastAPI + SQLite(WAL) + argon2-cffi。两个 Web 进程共享同一业务库，可直接演示并发下的链接消费、旧链接作废与旧会话撤销。</p>
+  <div class="grid" style="margin-top:16px">
+    <div>
+      <h2>功能入口</h2>
+      <p><a class="btn" href="/login">登录门户</a></p>
+      <p><a class="btn ghost" href="/reset/request">忘记密码 / 申请找回链接</a></p>
+      <p><a class="btn ghost" href="/mail">打开演示邮箱</a></p>
+      <p><a class="btn ghost" href="/me">查看我的身份（需登录）</a></p>
+    </div>
+    <div>
+      <h2>演示参数</h2>
+      <table>
+        <tr><th>当前哈希人为延迟</th><td><code>{{ delay_ms }} ms</code>（<a href="/settings">可调</a>，用于把 argon2 计算拉开观察交错操作）</td></tr>
+        <tr><th>链接有效期</th><td><code>10 分钟</code></td></tr>
+        <tr><th>业务库存储</th><td>仅存令牌 SHA-256 摘要，不存原始链接</td></tr>
+        <tr><th>预置账号</th><td><code>alice / Wonderland-1</code><br><code>bob / Secret-2</code></td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+<div class="card">
+  <h2>推荐演示流程</h2>
+  <ol class="small">
+    <li>用 <code>alice / Wonderland-1</code> 登录，打开“我的身份”确认会话有效。</li>
+    <li>在“找回密码”页输入 <code>alice</code>（或邮箱）申请链接，再到“演示邮箱”打开邮件里的链接。</li>
+    <li>把哈希延迟调到 5000ms：提交新密码后，在哈希计算期间另开窗口再次申请链接 / 登录 / 查询身份，均可立即响应。</li>
+    <li>重置成功后回到“我的身份”，原会话已被撤销，需要用新密码重新登录；旧密码登录会失败。</li>
+    <li>两个 Web 进程（端口 8001 / 8002）各开一个标签页，用同一链接同时提交，只有一个成功。</li>
+    <li>申请新链接后再用旧链接提交，即使旧链接未过期也会提示“已作废”。</li>
+  </ol>
+</div>
+{% endblock %}

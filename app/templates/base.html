@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}员工门户{% endblock %}</title>
+  <style>
+    :root { --bg:#f4f6fb; --card:#fff; --line:#d9dee8; --ink:#1f2733; --muted:#66707f;
+            --brand:#2456d6; --brand-d:#1a40a3; --ok:#157f3b; --warn:#b3541e; --err:#b4232a; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink);
+           font:15px/1.6 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+    header { background:#101a2e; color:#fff; }
+    .bar { max-width:980px; margin:0 auto; padding:12px 20px; display:flex; gap:18px; align-items:center; flex-wrap:wrap; }
+    .brand { font-weight:700; font-size:17px; color:#fff; text-decoration:none; margin-right:8px; }
+    .bar a.nav { color:#c8d4ef; text-decoration:none; }
+    .bar a.nav:hover { color:#fff; }
+    .spacer { flex:1; }
+    main { max-width:980px; margin:26px auto 60px; padding:0 20px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:24px 26px; margin-bottom:20px; }
+    h1 { margin:0 0 14px; font-size:22px; }
+    h2 { margin:0 0 10px; font-size:17px; }
+    p { margin:8px 0; }
+    .muted { color:var(--muted); }
+    label { display:block; font-weight:600; margin:14px 0 5px; }
+    input[type=text], input[type=password], input[type=number], input[type=email] {
+      width:100%; max-width:420px; padding:9px 11px; border:1px solid var(--line);
+      border-radius:8px; font-size:15px; }
+    button, .btn { display:inline-block; margin-top:16px; background:var(--brand); color:#fff;
+      border:0; border-radius:8px; padding:10px 20px; font-size:15px; cursor:pointer; text-decoration:none; }
+    button:hover, .btn:hover { background:var(--brand-d); }
+    .btn.ghost { background:#eef2fb; color:var(--brand-d); border:1px solid #c6d3f2; }
+    .msg { border-radius:8px; padding:11px 14px; margin:12px 0; }
+    .msg.ok { background:#e8f6ec; color:var(--ok); border:1px solid #b7e0c3; }
+    .msg.err { background:#fbe9ea; color:var(--err); border:1px solid #f0c3c5; }
+    .msg.warn { background:#fdf2e7; color:var(--warn); border:1px solid #f3d4b8; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+    th { color:var(--muted); font-weight:600; font-size:13px; }
+    code, pre { background:#f1f4fa; border-radius:6px; }
+    code { padding:2px 6px; }
+    pre { padding:14px; white-space:pre-wrap; word-break:break-all; border:1px solid var(--line); }
+    .pill { display:inline-block; padding:2px 10px; border-radius:999px; font-size:13px; font-weight:600; }
+    .pill.ok { background:#e8f6ec; color:var(--ok); }
+    .pill.bad { background:#fbe9ea; color:var(--err); }
+    .pill.gray { background:#eef0f4; color:var(--muted); }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+    .small { font-size:13px; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <a class="brand" href="/">员工门户</a>
+    <a class="nav" href="/me">我的身份</a>
+    <a class="nav" href="/reset/request">找回密码</a>
+    <a class="nav" href="/mail">演示邮箱</a>
+    <a class="nav" href="/settings">哈希延迟</a>
+    <span class="spacer"></span>
+    {% if user %}
+      <span class="small" style="color:#c8d4ef">已登录：{{ user.username }}</span>
+      <form method="post" action="/logout" style="margin:0">
+        <button class="ghost" style="margin:0;padding:5px 12px">退出</button>
+      </form>
+    {% else %}
+      <a class="nav" href="/login">登录</a>
+    {% endif %}
+  </div>
+</header>
+<main>
+{% block body %}{% endblock %}
+</main>
+</body>
+</html>
