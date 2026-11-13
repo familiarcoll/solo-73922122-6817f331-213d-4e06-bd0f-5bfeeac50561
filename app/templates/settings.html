@@ -1,24 +1,89 @@
 {% extends "base.html" %}
-{% block title %}哈希延迟设置{% endblock %}
+{% block title %}哈希延迟与故障演示{% endblock %}
 {% block body %}
-<div class="card" style="max-width:620px">
-  <h1>Argon2 哈希人为延迟</h1>
+<div class="card" style="max-width:760px">
+  <h1>Argon2 哈希延迟与投递故障演示</h1>
   <p class="muted">
-    为便于演示“哈希计算不持数据库写锁”，每次密码哈希 / 校验前后会额外等待指定时长（模拟真实环境中较慢的 argon2 计算）。
-    设置保存在业务数据库中，重启容器后仍然保留；设为 0 可关闭。
+    为便于演示“哈希计算不持数据库写锁”与“签发—投递配对发布”，这里可运行时调节
+    两类参数。所有设置保存在业务数据库中，重启容器后仍然保留。
   </p>
-  {% if saved %}<div class="msg ok">已保存，立即对后续登录与重置生效。</div>{% endif %}
+  {% if saved %}<div class="msg ok">已保存，立即对后续操作生效。</div>{% endif %}
   <form method="post" action="/settings">
-    <label for="delay_ms">延迟（毫秒，0–60000）</label>
+    <label for="delay_ms">哈希人为延迟（毫秒，0–60000）</label>
     <input id="delay_ms" name="delay_ms" type="number" min="0" max="60000" step="100"
            value="{{ delay_ms }}" required>
-    <button type="submit">保存</button>
+
+    <h2 style="margin-top:22px">邮箱库锁等待演示</h2>
+    <p class="small muted">
+      下次申请找回时，先用独立连接占住邮箱库写锁指定毫秒数。申请进程会在
+      <code>busy_timeout</code>（默认 5000ms）内排队等待，且等待期间<strong>不持有业务库写锁</strong>；
+      超过 5000ms 则投递失败、整笔申请补偿回滚，页面如实报错。
+    </p>
+    <label for="mail_lock_ms">邮箱锁占用时长（毫秒，0–30000；0 关闭）</label>
+    <input id="mail_lock_ms" name="mail_lock_ms" type="number" min="0" max="30000" step="500"
+           value="{{ lock_ms }}">
+
+    <h2 style="margin-top:22px">投递失败演示（触发一次后自动复位）</h2>
+    <p class="small muted">
+      下次申请在所选阶段注入一次写入故障，验证补偿：pending 令牌与邮件双双撤回，
+      旧链接保持有效，页面显示失败而不是“已发送”。
+    </p>
+    <label for="mail_fail_stage">故障注入阶段</label>
+    <select id="mail_fail_stage" name="mail_fail_stage" style="width:100%;max-width:420px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:15px">
+      <option value="" {% if not fail_stage %}selected{% endif %}>关闭</option>
+      <option value="{{ stage_mail_insert }}" {% if fail_stage == stage_mail_insert %}selected{% endif %}>1. 邮件落库（pending 邮件写入）</option>
+      <option value="{{ stage_mail_publish }}" {% if fail_stage == stage_mail_publish %}selected{% endif %}>2. 邮件发布（pending → sent）</option>
+      <option value="{{ stage_token_publish }}" {% if fail_stage == stage_token_publish %}selected{% endif %}>3. 令牌发布（pending → active / 旧链接作废）</option>
+    </select>
+
+    <h2 style="margin-top:22px">发布中进程退出演示（触发一次后自动复位）</h2>
+    <p class="small muted">
+      下次申请在所选阶段直接 <code>os._exit(1)</code> 硬退出该 Web 进程。
+      Compose 会自动重启，启动恢复按两库配对关系收敛残留的 pending 记录，
+      不会留下“有效链接无邮件”或“可见邮件对应未签发链接”。
+    </p>
+    <label for="mail_crash_stage">退出阶段</label>
+    <select id="mail_crash_stage" name="mail_crash_stage" style="width:100%;max-width:420px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:15px">
+      <option value="" {% if not crash_stage %}selected{% endif %}>关闭</option>
+      <option value="{{ stage_mail_insert }}" {% if crash_stage == stage_mail_insert %}selected{% endif %}>1. 邮件落库前</option>
+      <option value="{{ stage_mail_publish }}" {% if crash_stage == stage_mail_publish %}selected{% endif %}>2. 邮件发布前</option>
+      <option value="{{ stage_token_publish }}" {% if crash_stage == stage_token_publish %}selected{% endif %}>3. 令牌发布前（邮件已可见、链接未生效）</option>
+    </select>
+
+    <button type="submit">保存设置</button>
   </form>
-  <div class="grid small" style="margin-top:18px">
-    <div class="msg warn" style="margin:0">
-      <strong>交错操作演示：</strong>调大延迟（如 5000ms）后提交重置，
-      在等待期间用另一窗口申请新链接、登录或访问“我的身份”，这些请求都不会被阻塞。
+</div>
+
+<div class="card">
+  <h2>当前两库状态快照</h2>
+  <div class="grid">
+    <div>
+      <h3 class="small muted">业务库 reset_tokens</h3>
+      <table>
+        <tr><th>状态</th><th>数量</th><th class="small">含义</th></tr>
+        <tr><td><code>pending</code></td><td>{{ snapshot.tokens.get('pending', 0) }}</td><td class="small">已签发未发布，链接不可用</td></tr>
+        <tr><td><code>active</code></td><td>{{ snapshot.tokens.get('active', 0) }}</td><td class="small">已发布且有效</td></tr>
+        <tr><td><code>superseded</code></td><td>{{ snapshot.tokens.get('superseded', 0) }}</td><td class="small">被更新链接作废</td></tr>
+        <tr><td><code>consumed</code></td><td>{{ snapshot.tokens.get('consumed', 0) }}</td><td class="small">已一次性消费</td></tr>
+        <tr><td><code>aborted</code></td><td>{{ snapshot.tokens.get('aborted', 0) }}</td><td class="small">投递失败 / 崩溃补偿撤回</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3 class="small muted">邮箱库 mails</h3>
+      <table>
+        <tr><th>状态</th><th>数量</th><th class="small">含义</th></tr>
+        <tr><td><code>pending</code></td><td>{{ snapshot.mails.get('pending', 0) }}</td><td class="small">已落库未发布，收件人不可见</td></tr>
+        <tr><td><code>sent</code></td><td>{{ snapshot.mails.get('sent', 0) }}</td><td class="small">已发布，邮箱可读</td></tr>
+        <tr><td><code>aborted</code></td><td>{{ snapshot.mails.get('aborted', 0) }}</td><td class="small">失败撤回，不可见</td></tr>
+      </table>
     </div>
   </div>
+  <h3 class="small muted" style="margin-top:16px">最近事件（最新在上）</h3>
+  {% if events %}
+  <pre style="max-height:240px;overflow:auto">{% for e in events %}{{ e }}
+{% endfor %}</pre>
+  {% else %}
+  <p class="small muted">暂无事件。</p>
+  {% endif %}
 </div>
 {% endblock %}

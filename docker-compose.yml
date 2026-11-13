@@ -8,6 +8,10 @@ services:
       MAIL_DB_PATH: /data/mail.db
       HASH_DELAY_MS: "4000"
       RESET_TTL_SECONDS: "600"
+      # 邮箱库写锁等待上限；配合“故障演示”页的锁占用可观察等待与超时失败
+      MAIL_BUSY_TIMEOUT_MS: "5000"
+      BUSY_TIMEOUT_MS: "5000"
+      RECOVERY_GRACE_SECONDS: "20"
     ports:
       - "8001:8000"
     volumes:
@@ -30,6 +34,9 @@ services:
       MAIL_DB_PATH: /data/mail.db
       HASH_DELAY_MS: "4000"
       RESET_TTL_SECONDS: "600"
+      MAIL_BUSY_TIMEOUT_MS: "5000"
+      BUSY_TIMEOUT_MS: "5000"
+      RECOVERY_GRACE_SECONDS: "20"
     ports:
       - "8002:8000"
     volumes:

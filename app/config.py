@@ -28,6 +28,16 @@ class Settings:
     # 哈希人为延迟默认值（秒），可在“哈希延迟”页面运行时调整，用于演示交错操作
     default_hash_delay_ms: int = _int("HASH_DELAY_MS", 4000)
 
+    # 邮箱库写锁等待上限（毫秒）。超时即视为投递失败，走补偿而不是假报已发送。
+    mail_busy_timeout_ms: int = _int("MAIL_BUSY_TIMEOUT_MS", 5000)
+
+    # 业务库写锁等待上限（毫秒）。业务事务都极短（慢哈希在事务外）。
+    busy_timeout_ms: int = _int("BUSY_TIMEOUT_MS", 5000)
+
+    # 恢复宽限期（秒）：超过该时长仍停留在 pending 的“申请”视为崩溃残留。
+    # 正常申请的 pending 只存在毫秒级；等待邮箱锁最多 mail_busy_timeout_ms。
+    recovery_grace_seconds: int = _int("RECOVERY_GRACE_SECONDS", 20)
+
     # 预置账号
     seed_users: tuple[tuple[str, str, str], ...] = (
         ("alice", "alice@example.test", "Wonderland-1"),

@@ -1,18 +1,31 @@
 {% extends "base.html" %}
 {% block title %}找回密码 · 员工门户{% endblock %}
 {% block body %}
-<div class="card" style="max-width:560px">
+<div class="card" style="max-width:620px">
   <h1>申请密码找回链接</h1>
-  {% if sent %}
+  {% if delivery_error %}
+    <div class="msg err">
+      <strong>投递失败，本次申请未生效。</strong><br>
+      {{ delivery_error }}<br>
+      系统已把本次申请的待发布链接与邮件一并撤回，您此前的找回链接（如有）仍然有效，
+      业务库未留下任何可用的新链接。请稍后
+      <a href="/reset/request">重新申请</a>。
+    </div>
+  {% elif sent %}
     <div class="msg ok">
       若账号存在，一封含找回链接的邮件已发送到注册邮箱
       {% if hint_email %}<code>{{ hint_email }}</code>{% endif %}
       ，链接 10 分钟内有效。请前往
       <a href="/mail">演示邮箱</a> 查看。
     </div>
-    <p class="small muted">提示：再次申请会立即作废旧链接（即使旧链接尚未过期）。</p>
+    <p class="small muted">
+      提示：邮件可读、新链接生效与旧链接作废是一起发布的；再次申请会立即作废旧链接（即使旧链接尚未过期）。
+    </p>
   {% else %}
     <p class="muted">输入用户名或注册邮箱，系统会生成一次性随机链接并投递到演示邮箱。业务数据库只保存链接令牌的摘要。</p>
+    <p class="small muted">
+      签发与投递配对发布：只有邮件成功入库并发布后，链接才会生效；投递失败会撤回整笔申请，页面不会谎报已发送。
+    </p>
   {% endif %}
   <form method="post" action="/reset/request">
     <label for="login">用户名或邮箱</label>

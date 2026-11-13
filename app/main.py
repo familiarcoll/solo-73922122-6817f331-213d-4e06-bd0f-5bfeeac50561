@@ -29,7 +29,16 @@ async def lifespan(_app: FastAPI):
         created = service.seed_users(conn)
         if created:
             print(f"[startup] 预置账号就绪: {', '.join(created)}")
-    yield
+    # 启动恢复：收敛上个进程在发布中途退出留下的 pending 记录
+    recovered = service.recover_pending_requests()
+    if recovered:
+        print(f"[startup] 恢复收敛了 {recovered} 笔未完成的找回申请")
+    # 定时恢复：两个 Web 进程各自运行，按 request_id 幂等收敛，互不干扰
+    recovery_thread = service.start_recovery_loop()
+    try:
+        yield
+    finally:
+        recovery_thread.stop()
 
 
 app = FastAPI(title="员工门户 · 密码找回演示", lifespan=lifespan)
@@ -118,28 +127,39 @@ def me(request: Request):
 
 
 # --------------------------------------------------------------------------
-# 找回密码：申请链接
+# 找回密码：申请链接（签发与投递配对发布，失败如实报错）
 # --------------------------------------------------------------------------
 
 @app.get("/reset/request", response_class=HTMLResponse)
 def reset_request_page(request: Request):
-    return _render(request, "reset_request.html", sent=False, login_value="")
+    return _render(
+        request, "reset_request.html",
+        sent=False, delivery_error=None, login_value="", hint_email=None,
+    )
 
 
 @app.post("/reset/request")
 def reset_request_submit(request: Request, login: str = Form(...)):
     login = login.strip()
-    with get_conn() as conn:
-        result = service.request_password_reset(conn, login)
-    if result is not None:
-        # 事务提交后再拼链接并投递演示邮箱；令牌只出现在邮件里，业务库只存摘要
-        final_url = f"{request.base_url}reset?token={result.token}"
-        service.send_reset_mail(result.email, final_url, result.expires_at)
-    # 无论账号是否存在都显示同样的提示，避免账号枚举
+    delivery_error: str | None = None
+    result = None
+    try:
+        with get_conn() as conn:
+            # 令牌只出现在邮件里，业务库只存摘要；base_url 用于拼接邮件链接
+            result = service.request_password_reset(
+                conn, login, base_url=str(request.base_url)
+            )
+    except service.MailDeliveryError as exc:
+        # 补偿已完成：本申请的令牌与邮件均已撤销，旧链接保持原状。
+        # 页面必须如实提示失败，绝不显示“已发送”。
+        delivery_error = str(exc)
+
+    # 账号不存在时仍显示统一的中性提示，避免账号枚举
     return _render(
         request,
         "reset_request.html",
-        sent=True,
+        sent=result is not None and delivery_error is None,
+        delivery_error=delivery_error,
         login_value=login,
         hint_email=result.email if result else None,
     )
@@ -153,11 +173,8 @@ def _reset_form(request: Request, token: str, error: str | None = None):
     with get_conn() as conn:
         reason = service.token_failure_reason(conn, digest_token(token))
     return _render(
-        request,
-        "reset_form.html",
-        token=token,
-        reason=reason,
-        error=error,
+        request, "reset_form.html",
+        token=token, reason=reason, error=error,
     )
 
 
@@ -236,19 +253,45 @@ def mail_view(request: Request, mail_id: int):
 
 
 # --------------------------------------------------------------------------
-# 哈希延迟调节（演示交错操作）
+# 哈希延迟与故障演示调节（演示交错操作 / 锁等待 / 投递失败 / 发布中退出）
 # --------------------------------------------------------------------------
+
+def _settings_context(saved: bool) -> dict:
+    with get_conn() as conn:
+        delay_ms = int(service.get_hash_delay_seconds(conn) * 1000)
+        lock_ms = service.get_demo_mail_lock_ms(conn)
+        fail_stage = service.get_demo_stage(conn, service.DEMO_MAIL_FAIL_KEY)
+        crash_stage = service.get_demo_stage(conn, service.DEMO_MAIL_CRASH_KEY)
+    return {
+        "delay_ms": delay_ms,
+        "lock_ms": lock_ms,
+        "fail_stage": fail_stage,
+        "crash_stage": crash_stage,
+        "saved": saved,
+        "snapshot": service.get_status_snapshot(),
+        "events": service.tail_events(),
+        "stage_mail_insert": service.STAGE_MAIL_INSERT,
+        "stage_mail_publish": service.STAGE_MAIL_PUBLISH,
+        "stage_token_publish": service.STAGE_TOKEN_PUBLISH,
+    }
+
 
 @app.get("/settings", response_class=HTMLResponse)
 def settings_page(request: Request):
-    with get_conn() as conn:
-        delay_ms = int(service.get_hash_delay_seconds(conn) * 1000)
-    return _render(request, "settings.html", delay_ms=delay_ms, saved=False)
+    return _render(request, "settings.html", **_settings_context(saved=False))
 
 
 @app.post("/settings")
-def settings_submit(request: Request, delay_ms: int = Form(...)):
+def settings_submit(
+    request: Request,
+    delay_ms: int = Form(...),
+    mail_lock_ms: int = Form(0),
+    mail_fail_stage: str = Form(""),
+    mail_crash_stage: str = Form(""),
+):
     with get_conn() as conn:
         service.set_hash_delay_ms(conn, delay_ms)
-        actual = int(service.get_hash_delay_seconds(conn) * 1000)
-    return _render(request, "settings.html", delay_ms=actual, saved=True)
+        service.set_demo_mail_lock_ms(conn, mail_lock_ms)
+        service.set_demo_stage(conn, service.DEMO_MAIL_FAIL_KEY, mail_fail_stage)
+        service.set_demo_stage(conn, service.DEMO_MAIL_CRASH_KEY, mail_crash_stage)
+    return _render(request, "settings.html", **_settings_context(saved=True))
